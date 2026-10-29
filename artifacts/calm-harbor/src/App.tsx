@@ -5,6 +5,18 @@ import { ArrowRight, Bell, CalendarDays, Check, ChevronRight, CircleHelp, Compas
 type MoodEntry = { mood: string; note: string; date: string };
 type ChatMessage = { role: 'user' | 'bot'; text: string; id: string };
 type ReminderMap = Record<string, string>;
+type CommunityEvent = {
+  id: string;
+  title: string;
+  date: string | null;
+  dateLabel: string;
+  time: string;
+  recurrence?: string;
+  place: string;
+  cost: string;
+  details: string;
+  contactPhone?: string;
+};
 type StoreProps = {
   moods: MoodEntry[];
   setMoods: (items: MoodEntry[]) => void;
@@ -31,12 +43,6 @@ const moodLines: Record<string, string> = {
   Tense: 'You do not have to untangle everything right now.',
   Heavy: 'You deserve support, even if you do not know what to ask for.',
 };
-const eventDate = (daysAhead: number, hour: number, minute = 0) => {
-  const date = new Date();
-  date.setDate(date.getDate() + daysAhead);
-  date.setHours(hour, minute, 0, 0);
-  return date.toISOString();
-};
 const formatEventDate = (value: string) => new Date(value).toLocaleDateString(undefined, {
   weekday: 'short',
   month: 'short',
@@ -51,11 +57,38 @@ const localDateTimeValue = (value: string) => {
   const date = new Date(value);
   return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 };
-const demoEvents = [
-  { id: 'walk', date: eventDate(7, 10), title: 'A slow neighborhood walk', place: 'Harborview Greenway — example location', cost: 'Free', details: 'A gentle, no-pressure group walk with plenty of room to pause. Bring comfortable shoes and water.' },
-  { id: 'journal', date: eventDate(10, 18, 30), title: 'Tea, pages & a quiet hour', place: 'The Lantern Room — example venue', cost: '$8 demo price', details: 'A relaxed journaling hour. Prompts and tea provided; writing is always optional.' },
-  { id: 'stretch', date: eventDate(14, 17, 15), title: 'Stretch at your own pace', place: 'Community Studio — example venue', cost: 'Pay what you can (demo)', details: 'Beginner-friendly movement with chair options. No experience or special clothing needed.' },
-  { id: 'craft', date: eventDate(18, 14), title: 'Make something small', place: 'North Room — example venue', cost: 'Free demo listing', details: 'A low-stakes craft table for making a tiny paper garden. Materials are included in this sample listing.' },
+const nextWednesdaySession = () => {
+  const now = new Date();
+  const date = new Date(now);
+  const daysUntilWednesday = (3 - date.getDay() + 7) % 7;
+  date.setDate(date.getDate() + daysUntilWednesday);
+  date.setHours(11, 0, 0, 0);
+  if (date.getTime() <= now.getTime()) date.setDate(date.getDate() + 7);
+  return date.toISOString();
+};
+const getCommunityEvents = (): CommunityEvent[] => [
+  {
+    id: 'vyuha',
+    title: 'VYUHA',
+    date: null,
+    dateLabel: 'Next week',
+    time: 'Exact time to be confirmed',
+    place: 'Venue to be confirmed',
+    cost: 'Ask the organizer',
+    details: 'Are you excited for VYUHA? Message the organizer if you would like to participate. Confirm the exact date, time, venue, and any registration fee before attending.',
+    contactPhone: '6303723248',
+  },
+  {
+    id: 'sr-clubs',
+    title: 'SR University Clubs',
+    date: nextWednesdaySession(),
+    dateLabel: '',
+    time: '11:00 AM–3:30 PM',
+    recurrence: 'Every Wednesday',
+    place: 'SR University',
+    cost: 'Not provided; please confirm',
+    details: 'Explore singing, dance, indoor games, and gym activities during the weekly club time.',
+  },
 ];
 const crisisPattern = /\b(kill myself|suicid(?:e|al)|end my life|want to die|not worth living|better off dead|hurt myself|harm myself|self[- ]harm|can't go on|cannot go on|overdose|kill someone|hurt someone)\b/i;
 const uuid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -162,16 +195,64 @@ function HomePage({ store }: { store: StoreProps }) {
   </div>;
 }
 
-function botReply(text: string): string {
+function botReply(text: string, turnIndex: number): string {
   const lower = text.toLowerCase();
-  if (/\b(anxious|anxiety|panic|overwhelm|stressed|stress|nervous)\b/.test(lower)) return 'That sounds like a lot to hold at once. You do not have to make it disappear to take care of yourself. Would a slow breath or naming what feels most pressing help right now?';
-  if (/\b(work|boss|deadline|school|study|exam|busy)\b/.test(lower)) return 'It can be hard when demands keep stacking up. We can make this smaller without solving it all. What is one thing that truly needs your attention today?';
-  if (/\b(lonely|alone|friend|relationship|family|argument|partner)\b/.test(lower)) return 'Feeling disconnected can weigh on a person. I can stay with you for a moment, and reaching out to someone you trust may help too. Is there one person who feels safe to contact?';
-  if (/\b(tired|sleep|exhaust|energy|rest)\b/.test(lower)) return 'It makes sense that everything feels harder when you are worn down. Rest does not have to be earned. What is the gentlest version of a pause you could take?';
-  if (/\b(angry|mad|frustrat|irritat)\b/.test(lower)) return 'There may be something important underneath that frustration. You do not have to act on it immediately. What part of this feels most unfair or important to you?';
-  if (/\b(thank|helpful|thanks)\b/.test(lower)) return 'You are welcome. I am glad this moment has a little more room in it. What would feel supportive as a next step?';
-  if (/\b(breath|ground|calm down|settle)\b/.test(lower)) return 'Try letting your shoulders drop a little. Notice the surface holding you, then name one thing you can see and one sound you can hear. What do you notice first?';
-  return 'Thank you for putting that into words. There is no need to have it all figured out. What feels like the most important piece for you right now?';
+  const choose = (replies: string[]) => replies[turnIndex % replies.length];
+  if (/\b(vyuha)\b/.test(lower)) return choose([
+    'VYUHA is listed for next week, but its exact date, time, venue, and fee still need confirmation. If you want to participate, message 6303723248 and ask the organizer for those details.',
+    'Interested in VYUHA? The app has the participation contact as 6303723248. A quick message can confirm how to join and the event schedule.',
+  ]);
+  if (/\b(sr university|university clubs?|singing|songs|dance|dancing|indoor games|gym|wednesday)\b/.test(lower)) return choose([
+    'SR University clubs are listed every Wednesday from 11:00 AM to 3:30 PM, with singing, dance, indoor games, and gym activities. The exact room and any fee were not provided, so please confirm with the university.',
+    'If you want an in-person change of scene, the SR University club time is Wednesdays, 11:00 AM–3:30 PM. You can explore singing, dance, indoor games, or the gym; confirm venue and cost first.',
+  ]);
+  if (/\b(exam|exams|test|tests|studying|study|revision|result|marks|grades)\b/.test(lower)) return choose([
+    'Exam pressure can make everything feel urgent. Would a five-minute reset help before the next small study step? The quick trivia game or a short video in Small resets can give your mind a change of pace.',
+    'It sounds like exams are taking up a lot of headspace. You could choose one manageable study task, then take a short break without needing to earn it. What feels hardest right now: starting, remembering, or the pressure?',
+    'When studying feels crowded, try setting the books aside for a few minutes. Small resets has a no-score brain game and video ideas if you want a gentle distraction before returning.',
+  ]);
+  if (/\b(anxious|anxiety|panic|overwhelm|stressed|stress|nervous|worried|worry)\b/.test(lower)) return choose([
+    'That sounds like a lot to hold at once. You do not have to make it disappear to take care of yourself. Would a slow breath or naming what feels most pressing help right now?',
+    'I hear that this feels heavy right now. If it is comfortable, notice your feet on the floor and let your shoulders soften. What is one part of the situation you want to focus on first?',
+    'Stress can make the whole day feel like one big problem. We can slow it down: what is happening in this moment, and what can wait until later?',
+  ]);
+  if (/\b(bored|boring|fun|funny|game|games|video|videos|distraction)\b/.test(lower)) return choose([
+    'A change of focus can be welcome. Small resets has quick trivia, a noticing game, funny video searches, and educational video ideas. Which kind of break sounds good?',
+    'Want a light brain break? You can try the trivia or noticing game, look up a short comedy clip, or explore a quick learning video in Small resets.',
+  ]);
+  if (/\b(lonely|alone|friend|relationship|family|argument|partner)\b/.test(lower)) return choose([
+    'Feeling disconnected can weigh on a person. Reaching out to someone you trust may help too. Is there one person who feels safe to contact?',
+    'That sounds lonely to carry. You deserve support that can respond to you, not just an app. Would sending a simple “Could we talk for a few minutes?” message feel possible?',
+  ]);
+  if (/\b(work|boss|deadline|busy|job|meeting|career)\b/.test(lower)) return choose([
+    'It can be hard when work demands keep stacking up. We can make this smaller without solving it all. What is one thing that truly needs your attention today?',
+    'Work pressure can follow you even when you stop working. Would it help to name the next manageable task, or would you rather take a short reset first?',
+  ]);
+  if (/\b(tired|sleep|exhaust|energy|rest|fatigue)\b/.test(lower)) return choose([
+    'It makes sense that everything feels harder when you are worn down. Rest does not have to be earned. What is the gentlest version of a pause you could take?',
+    'If you are running low on energy, a small pause may be enough for now. Would quiet, a stretch, or a short funny video feel most comfortable?',
+  ]);
+  if (/\b(angry|mad|frustrat|irritat)\b/.test(lower)) return choose([
+    'There may be something important underneath that frustration. You do not have to act on it immediately. What part of this feels most unfair or important to you?',
+    'That sounds frustrating. If you can, take a moment before responding to anyone involved. What would you want them to understand about how this affected you?',
+  ]);
+  if (/\b(sad|down|low|upset|crying|hopeless)\b/.test(lower)) return choose([
+    'I am sorry this is a hard moment. You do not need to force yourself to feel better right away. Would it help to tell me what has been weighing on you, or to try a small grounding activity?',
+    'You deserve kindness even when the day feels low. Is there one gentle thing you can do for yourself in the next few minutes, even if it is very small?',
+  ]);
+  if (/\b(thank|helpful|thanks)\b/.test(lower)) return choose([
+    'You are welcome. I am glad this moment has a little more room in it. What would feel supportive as a next step?',
+    'I am glad you reached out. We can keep this simple: would you like to talk more, try a small reset, or look at an event?',
+  ]);
+  if (/\b(breath|ground|calm down|settle)\b/.test(lower)) return choose([
+    'Try letting your shoulders drop a little. Notice the surface holding you, then name one thing you can see and one sound you can hear. What do you notice first?',
+    'If it feels okay, take an unhurried breath out. Find one color around you and one point of contact with the chair or floor. You can stop whenever you want.',
+  ]);
+  return choose([
+    'Thanks for telling me. I may not know the full story, but we can take one part at a time. What feels most important about it right now?',
+    'I hear you. Would you like to say a little more about what happened, or would you prefer a small distraction from Small resets?',
+    'That sounds like it matters to you. What would feel most helpful right now: being heard, thinking through one next step, or taking a short break?',
+  ]);
 }
 function ChatPage({ store }: { store: StoreProps }) {
   const [draft, setDraft] = useState('');
@@ -186,7 +267,8 @@ function ChatPage({ store }: { store: StoreProps }) {
       setCrisis(true);
       store.setChat([...store.chat, userMessage, { id: uuid(), role: 'bot', text: 'I am really sorry things feel this intense. Your safety matters, and this app is not emergency care. If you may act on these thoughts or someone is in immediate danger, call your local emergency number or go to the nearest emergency department now. If you can, move near another person you trust and tell them plainly what is happening. You can find crisis resources on the Support page.' }]);
     } else {
-      store.setChat([...store.chat, userMessage, { id: uuid(), role: 'bot', text: botReply(text) }]);
+      const turnIndex = store.chat.filter(message => message.role === 'user').length;
+      store.setChat([...store.chat, userMessage, { id: uuid(), role: 'bot', text: botReply(text, turnIndex) }]);
     }
     setDraft('');
   };
@@ -218,7 +300,8 @@ function EventsPage({ store }: { store: StoreProps }) {
   const [reminderDialog, setReminderDialog] = useState<string | null>(null);
   const [reminderAt, setReminderAt] = useState('');
   const [noticeStatus, setNoticeStatus] = useState('');
-  const myEvents = demoEvents.filter(event => store.rsvps.includes(event.id));
+  const events = getCommunityEvents();
+  const myEvents = events.filter(event => store.rsvps.includes(event.id));
   const toggleRsvp = (id: string) => {
     const isGoing = store.rsvps.includes(id);
     store.setRsvps(isGoing ? store.rsvps.filter(item => item !== id) : [...store.rsvps, id]);
@@ -227,12 +310,13 @@ function EventsPage({ store }: { store: StoreProps }) {
       delete remaining[id];
       store.setReminders(remaining);
     }
-    store.toast(isGoing ? 'RSVP cancelled.' : 'You are on the demo RSVP list.');
+    store.toast(isGoing ? 'Saved interest removed.' : 'Interest saved on this device; it was not sent to the university.');
   };
   const saveReminder = (eventId: string) => {
-    const event = demoEvents.find(item => item.id === eventId);
+    const event = events.find(item => item.id === eventId);
     if (!reminderAt || new Date(reminderAt).getTime() <= Date.now()) { store.toast('Choose a reminder time in the future.'); return; }
-    if (event && new Date(reminderAt).getTime() >= new Date(event.date).getTime()) { store.toast('Choose a reminder before the event starts.'); return; }
+    if (!event?.date) { store.toast('The event schedule needs to be confirmed before setting a reminder.'); return; }
+    if (new Date(reminderAt).getTime() >= new Date(event.date).getTime()) { store.toast('Choose a reminder before the event starts.'); return; }
     store.setReminders({ ...store.reminders, [eventId]: reminderAt });
     setReminderDialog(null);
     store.toast('Reminder saved. It will appear while this app is open.');
@@ -248,21 +332,31 @@ function EventsPage({ store }: { store: StoreProps }) {
     }
   };
   return <div>
-    <PageIntro label="Made-up examples for exploring" title="Find a gentle gathering">These sample listings are fictional demo content—not verified events, bookings, or real venues. Please do not travel to the example locations.</PageIntro>
-    <div className="notice" style={{ marginBottom: 24 }} data-testid="notice-demo-events"><strong>Demo listings only.</strong> All dates, locations, prices and event details below are invented examples and have not been verified.</div>
+    <PageIntro label="Campus activities" title="Find a gathering">A campus event can offer a change of scene, a little connection, or something fun to look forward to.</PageIntro>
+    <div className="notice" style={{ marginBottom: 24 }} data-testid="notice-event-details"><strong>Please confirm event details before attending.</strong> VYUHA is listed for next week, but its exact date, time, venue, and fee were not provided. The SR University club schedule is shown as shared and may change.</div>
     <div className="event-list">
-      {demoEvents.map((event, i) => <article className="card event-card" key={event.id} data-testid={`card-event-${event.id}`}>
-        <div className="event-date"><CalendarDays size={18} /><strong>{formatEventDate(event.date)}</strong><span>{formatEventTime(event.date)}</span></div>
+      {events.map(event => <article className="card event-card" key={event.id} data-testid={`card-event-${event.id}`}>
+        <div className="event-date"><CalendarDays size={18} /><strong>{event.date ? formatEventDate(event.date) : event.dateLabel}</strong><span>{event.time}</span>{event.recurrence && <span className="small muted">{event.recurrence}</span>}</div>
         <h3>{event.title}</h3><p className="muted small">{event.details}</p>
-        <div className="stat-line small"><span className="muted">Example place</span><strong>{event.place}</strong></div>
-        <div className="stat-line small"><span className="muted">Example cost</span><strong>{event.cost}</strong></div>
-        <div className="event-footer"><span className="mini-tag">Fictional demo</span><button className={`button ${store.rsvps.includes(event.id) ? 'button-soft' : 'button-primary'}`} onClick={() => toggleRsvp(event.id)} data-testid={`button-rsvp-${event.id}`}>{store.rsvps.includes(event.id) ? <><Check size={15} /> Going · Cancel</> : 'RSVP (demo)'}</button></div>
-        {store.rsvps.includes(event.id) && <div className="pill-row" style={{ marginTop: 12 }}><span className="small muted">{store.reminders[event.id] ? `Reminder: ${dateLabel(store.reminders[event.id])}` : 'RSVP stored on this device.'}</span><button className="button button-outline small" onClick={() => { setReminderDialog(event.id); setReminderAt(store.reminders[event.id] ? store.reminders[event.id].slice(0, 16) : ''); }} data-testid={`button-reminder-${event.id}`}><Bell size={14} /> {store.reminders[event.id] ? 'Change reminder' : 'Add reminder'}</button></div>}
+        <div className="stat-line small"><span className="muted">Place</span><strong>{event.place}</strong></div>
+        <div className="stat-line small"><span className="muted">Registration fee</span><strong>{event.cost}</strong></div>
+        {event.contactPhone ? <div className="event-footer">
+          <span className="mini-tag">Ask organizer to confirm</span>
+          <div className="pill-row">
+            <a className="button button-primary" href={`sms:+91${event.contactPhone}?body=${encodeURIComponent('Hi, I am interested in participating in VYUHA. Could you share the exact date, time, venue, and registration fee?')}`} data-testid="link-vyuha-message">Message to participate</a>
+            <a className="button button-outline" href={`tel:+91${event.contactPhone}`} data-testid="link-vyuha-call">Call {event.contactPhone}</a>
+          </div>
+        </div> : <div className="event-footer">
+          <span className="mini-tag">Schedule shared by user</span>
+          <button className={`button ${store.rsvps.includes(event.id) ? 'button-soft' : 'button-primary'}`} onClick={() => toggleRsvp(event.id)} data-testid={`button-interest-${event.id}`}>{store.rsvps.includes(event.id) ? <><Check size={15} /> Interested · Remove</> : 'Save my interest'}</button>
+        </div>}
+        {store.rsvps.includes(event.id) && <p className="small muted" data-testid={`status-interest-${event.id}`}>Your interest is saved only in this browser; it is not a registration.</p>}
+        {event.date && <div className="pill-row" style={{ marginTop: 12 }}><span className="small muted">{store.reminders[event.id] ? `Reminder: ${dateLabel(store.reminders[event.id])}` : 'Reminder for the next club session'}</span><button className="button button-outline small" onClick={() => { setReminderDialog(event.id); setReminderAt(store.reminders[event.id] ? store.reminders[event.id].slice(0, 16) : ''); }} data-testid={`button-reminder-${event.id}`}><Bell size={14} /> {store.reminders[event.id] ? 'Change reminder' : 'Add reminder'}</button></div>}
       </article>)}
     </div>
-    {myEvents.length > 0 && <section className="card" style={{ marginTop: 22 }}><div className="eyebrow">Your demo RSVPs</div><p className="muted small">Stored only in this browser. RSVP does not contact a real organizer.</p><div className="pill-row">{myEvents.map(e => <span className="mini-tag" key={e.id} data-testid={`status-rsvp-${e.id}`}>{e.title}</span>)}</div></section>}
+    {myEvents.length > 0 && <section className="card" style={{ marginTop: 22 }}><div className="eyebrow">Your saved interest</div><p className="muted small">Stored only in this browser; this does not register you with the university.</p><div className="pill-row">{myEvents.map(e => <span className="mini-tag" key={e.id} data-testid={`status-interest-summary-${e.id}`}>{e.title}</span>)}</div></section>}
     <section className="card" style={{ marginTop: 22 }}><div className="section-head"><div><div className="eyebrow">Browser reminders</div><h2 style={{ fontFamily: 'var(--app-font-serif)', color: '#31584e', marginBottom: 0 }}>Keep it simple</h2></div><Bell size={19} color="#648578" /></div><p className="muted small">Due reminders appear in the app while this tab is open. Browser notifications require permission and may not arrive if the tab closes, the browser pauses, or the device is offline.</p><button className="button button-soft" onClick={browserNotify} data-testid="button-enable-notifications">Allow browser notifications</button>{noticeStatus && <p role="status" className="small muted" data-testid="status-notification">{noticeStatus}</p>}</section>
-    {reminderDialog && <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget) setReminderDialog(null); }}><section className="card modal" role="dialog" aria-modal="true" aria-labelledby="reminder-title"><div className="section-head"><h2 id="reminder-title" style={{ fontFamily: 'var(--app-font-serif)', color: '#31584e' }}>Save a reminder</h2><button className="button button-outline" aria-label="Close" onClick={() => setReminderDialog(null)} data-testid="button-close-reminder"><X size={16} /></button></div><p className="small muted">This reminder stays in the app on this device; it is not sent to a calendar.</p><label className="small muted" htmlFor="reminder-datetime">Remind me at</label><input id="reminder-datetime" className="input" type="datetime-local" min={localDateTimeValue(new Date().toISOString())} max={localDateTimeValue(demoEvents.find(event => event.id === reminderDialog)?.date ?? new Date().toISOString())} value={reminderAt} onChange={e => setReminderAt(e.target.value)} data-testid="input-reminder-time" /><div className="pill-row" style={{ marginTop: 18 }}><button className="button button-primary" onClick={() => saveReminder(reminderDialog)} data-testid="button-save-reminder">Save reminder</button><button className="button button-outline" onClick={() => setReminderDialog(null)} data-testid="button-cancel-reminder">Cancel</button></div></section></div>}
+    {reminderDialog && <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget) setReminderDialog(null); }}><section className="card modal" role="dialog" aria-modal="true" aria-labelledby="reminder-title"><div className="section-head"><h2 id="reminder-title" style={{ fontFamily: 'var(--app-font-serif)', color: '#31584e' }}>Save a reminder</h2><button className="button button-outline" aria-label="Close" onClick={() => setReminderDialog(null)} data-testid="button-close-reminder"><X size={16} /></button></div><p className="small muted">This reminder stays in the app on this device; it is not sent to a calendar.</p><label className="small muted" htmlFor="reminder-datetime">Remind me at</label><input id="reminder-datetime" className="input" type="datetime-local" min={localDateTimeValue(new Date().toISOString())} max={localDateTimeValue(events.find(event => event.id === reminderDialog)?.date ?? new Date().toISOString())} value={reminderAt} onChange={e => setReminderAt(e.target.value)} data-testid="input-reminder-time" /><div className="pill-row" style={{ marginTop: 18 }}><button className="button button-primary" onClick={() => saveReminder(reminderDialog)} data-testid="button-save-reminder">Save reminder</button><button className="button button-outline" onClick={() => setReminderDialog(null)} data-testid="button-cancel-reminder">Cancel</button></div></section></div>}
   </div>;
 }
 
@@ -271,7 +365,15 @@ function ActivitiesPage({ store }: { store: StoreProps }) {
   const [seconds, setSeconds] = useState(60);
   const [groundStep, setGroundStep] = useState(0);
   const [gameCount, setGameCount] = useState(0);
+  const [triviaIndex, setTriviaIndex] = useState(0);
+  const [triviaChoice, setTriviaChoice] = useState<string | null>(null);
   const steps = ['Name 5 things you can see.', 'Notice 4 things you can feel.', 'Listen for 3 things you can hear.', 'Find 2 things you can smell, or like the idea of.', 'Name 1 small thing you want to give yourself.'];
+  const trivia = [
+    { question: 'Which planet is known as the Red Planet?', choices: ['Mars', 'Venus', 'Mercury', 'Neptune'], answer: 'Mars', fact: 'Mars looks reddish because of iron minerals in its soil.' },
+    { question: 'Which is the largest ocean on Earth?', choices: ['Atlantic', 'Indian', 'Pacific', 'Arctic'], answer: 'Pacific', fact: 'The Pacific Ocean is larger than all of Earth’s land area combined.' },
+    { question: 'Which number is prime?', choices: ['9', '15', '17', '21'], answer: '17', fact: 'A prime number has exactly two positive factors: one and itself.' },
+  ];
+  const currentTrivia = trivia[triviaIndex];
   useEffect(() => {
     if (!running) return;
     const timer = window.setInterval(() => setSeconds(value => {
@@ -309,13 +411,25 @@ function ActivitiesPage({ store }: { store: StoreProps }) {
       <p className="small muted" data-testid="text-noticing-count">{gameCount ? `${gameCount} noticing ${gameCount === 1 ? 'moment' : 'moments'} this session` : 'A moment of attention is enough.'}</p>
     </section>
     <section className="card" style={{ marginTop: 22 }}>
-      <div className="section-head"><div><div className="eyebrow">A lighter detour</div><h2 style={{ fontFamily: 'var(--app-font-serif)', color: '#31584e', marginBottom: 0 }}>Funny & encouraging finds</h2></div><Sparkles color="#648578" /></div>
-      <p className="muted small">These open external YouTube search pages, not curated or endorsed individual videos. Preview content and use your own judgment.</p>
+      <div className="section-head"><div><div className="eyebrow">A playful brain break</div><h2 style={{ fontFamily: 'var(--app-font-serif)', color: '#31584e', marginBottom: 0 }}>Quick trivia</h2></div><Compass color="#648578" /></div>
+      <p className="muted" data-testid="text-trivia-question">{currentTrivia.question}</p>
+      <div className="pill-row">
+        {currentTrivia.choices.map(choice => <button key={choice} className={`button ${triviaChoice === choice ? 'button-primary' : 'button-soft'}`} onClick={() => setTriviaChoice(choice)} disabled={triviaChoice !== null} aria-pressed={triviaChoice === choice} data-testid={`button-trivia-${choice.toLowerCase()}`}>{choice}</button>)}
+      </div>
+      {triviaChoice && <p className="notice" role="status" data-testid="status-trivia-answer">{triviaChoice === currentTrivia.answer ? 'That’s right. ' : `The answer is ${currentTrivia.answer}. `}{currentTrivia.fact}</p>}
+      <button className="button button-outline" style={{ marginTop: 14 }} onClick={() => { setTriviaIndex((triviaIndex + 1) % trivia.length); setTriviaChoice(null); }} data-testid="button-next-trivia">Another question <ArrowRight size={15} /></button>
+    </section>
+    <section className="card" style={{ marginTop: 22 }}>
+      <div className="section-head"><div><div className="eyebrow">A lighter detour</div><h2 style={{ fontFamily: 'var(--app-font-serif)', color: '#31584e', marginBottom: 0 }}>Funny, encouraging & educational videos</h2></div><Sparkles color="#648578" /></div>
+      <p className="muted small">These open YouTube search results, not curated or endorsed videos. Preview content and use your own judgment.</p>
       {[
-        ['Short animal bloopers', 'A small laugh, no context required.', 'funny animal bloopers short videos'],
-        ['Gentle stand-up clips', 'A little humor for a quiet break.', 'clean stand up comedy short clips'],
-        ['A kind pep talk', 'Search for encouragement without the pressure to be upbeat.', 'gentle motivational talk self compassion'],
-      ].map(([title, description, query], i) => <div className="video-row" key={title} data-testid={`item-video-${i}`}><div><strong>{title}</strong><div className="small muted">{description}</div></div><a className="button button-outline" href={`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`} target="_blank" rel="noreferrer" data-testid={`link-video-${i}`}>Explore <ExternalLink size={14} /></a></div>)}
+        ['Funny', 'Short animal bloopers', 'A small laugh, no context required.', 'funny animal bloopers short videos'],
+        ['Funny', 'Clean stand-up clips', 'A little humor for a quiet break.', 'clean stand up comedy short clips'],
+        ['Encouragement', 'A kind pep talk', 'Search for encouragement without pressure to feel upbeat.', 'gentle motivational talk self compassion'],
+        ['Learn', 'Everyday science', 'Short explanations of curious science questions.', 'everyday science explained short educational videos'],
+        ['Learn', 'History in a few minutes', 'Explore a short history topic that interests you.', 'history explained short educational videos'],
+        ['Learn', 'Try a practical skill', 'Find beginner-friendly lessons and how-to videos.', 'beginner practical skills educational videos'],
+      ].map(([category, title, description, query], i) => <div className="video-row" key={title} data-testid={`item-video-${i}`}><div><span className="mini-tag">{category}</span><strong style={{ display: 'block', marginTop: 6 }}>{title}</strong><div className="small muted">{description}</div></div><a className="button button-outline" href={`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`} target="_blank" rel="noreferrer" data-testid={`link-video-${i}`}>Explore <ExternalLink size={14} /></a></div>)}
     </section>
   </div>;
 }
@@ -369,14 +483,14 @@ function AppContent() {
       if (!due.length) return;
       const remaining = { ...saved };
       due.forEach(([eventId]) => {
-        const event = demoEvents.find(item => item.id === eventId);
+        const event = getCommunityEvents().find(item => item.id === eventId);
         const title = event ? `Your event reminder: ${event.title}` : 'A reminder you saved is due.';
         toast(title);
         if ('Notification' in window && Notification.permission === 'granted') {
           const details = event
-            ? `${event.title} · ${formatEventDate(event.date)} at ${formatEventTime(event.date)} · ${event.place} · ${event.cost}`
+            ? `${event.title} · ${event.date ? formatEventDate(event.date) : event.dateLabel} · ${event.time} · ${event.place} · Fee: ${event.cost}`
             : title;
-          try { new Notification('Calm Harbor demo reminder', { body: details }); } catch { /* Browser notifications may be unavailable. */ }
+          try { new Notification('Calm Harbor event reminder', { body: details }); } catch { /* Browser notifications may be unavailable. */ }
         }
         delete remaining[eventId];
       });

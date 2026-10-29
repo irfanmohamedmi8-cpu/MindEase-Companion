@@ -1,6 +1,6 @@
 # Calm Harbor
 
-Calm Harbor is a small mental-wellness companion for everyday stress. It offers a supportive guided chat, private mood check-ins, sample community activities, simple grounding exercises, and help finding human support.
+Calm Harbor is a small mental-wellness companion for everyday stress. It offers a supportive guided chat, private mood check-ins, campus activity information, quick games, video discovery, and help finding human support.
 
 > Calm Harbor is a wellbeing tool, not medical advice, diagnosis, treatment, or emergency care. If someone may be in immediate danger, contact local emergency services or a trusted person now.
 
@@ -8,7 +8,7 @@ Calm Harbor is a small mental-wellness companion for everyday stress. It offers 
 
 - Guided, scripted coping chat with grounding prompts and crisis-language escalation.
 - Mood check-ins and chat history saved in the current browser.
-- Sample events with dates, times, places, costs, and RSVP controls. Event listings are examples, not verified real-world events.
+- VYUHA participation contact and SR University club schedule, with unknown event details clearly marked for confirmation.
 - In-app reminders checked while the app is open, with optional browser notifications after permission is granted. Delivery is not guaranteed when the app is closed, paused, or offline.
 - Small interactive activities and links to discover funny or motivational videos.
 - Privacy controls to clear locally saved information.
@@ -48,4 +48,4 @@ Keep `pnpm-lock.yaml` in the repository for reproducible installs. Do not commit
 
 ## Before using this with real people
 
-The events, dates, venues, prices, and media discovery links are demo content. Replace them with verified local listings and confirmed resources before presenting them as real recommendations. Review crisis language and contact details with qualified local mental-health professionals for each launch region. Browser-only storage and reminders are not suitable for confidential records or guaranteed notifications.
+The VYUHA listing was supplied as happening next week, but its exact date, time, venue, and fee were not provided; confirm that it is still upcoming and verify those details with the organizer before attending or paying. The SR University club schedule was also supplied by the app owner and has not been independently confirmed. Video links open uncurated YouTube search results. Review crisis language and contact details with qualified local mental-health professionals for each launch region. Browser-only storage and reminders are not suitable for confidential records or guaranteed notifications.
