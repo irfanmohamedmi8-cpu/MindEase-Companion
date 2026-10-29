@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Calm Harbor"
+description = "A supportive mental wellness companion with a guided coping chat, mood check-ins, local demo events with reminders, and gentle activities."
+version = "1.0.0"
+id = "artifacts/calm-harbor"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22594
+
+[services.development]
+run = "pnpm --filter @workspace/calm-harbor run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/calm-harbor", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/calm-harbor/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22594"
+BASE_PATH = "/"
